@@ -108,6 +108,12 @@ body.edit-mode .bl{pointer-events:auto;cursor:move;outline:1.5px dashed #0ea5e9;
 .ebar code{background:var(--chip);padding:2px 6px;border-radius:4px;font-size:12px}
 .ebar button{border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:5px 10px;border-radius:6px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
 .ebar button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+/* WSTIP_CSS */
+.wstip{margin:0 0 10px;padding:7px 12px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;background:var(--card);font-size:13px;color:var(--muted)}
+.wstip b{color:var(--ink)}
+.wstip code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12px}
+body.fs .wstip{display:none}
 </style>
 </head>
 <body>
@@ -124,6 +130,7 @@ body.edit-mode .bl{pointer-events:auto;cursor:move;outline:1.5px dashed #0ea5e9;
       </div>
     </div>
   </header>
+  <div class="wstip" id="wstip"></div>
 
   <div class="lesson" id="lesson">
     <span id="lfrom"></span> <input type="number" id="lf" min="1" value="1">
@@ -510,6 +517,22 @@ document.addEventListener("keydown", e => {
 
   renderBlurs();
   if (editOn) enableEdit(true);
+})();
+
+
+/* WSTIP_JS */
+(function(){
+  const TIPS = {
+    en: '<b>Workspace tip:</b> Unless instructed otherwise, whenever you pick a source in OneLake, select the <b>Lakehouse</b> row (not <code>SQLEndpoint</code>) matching <b>your own workspace</b> in <b>Location</b>.',
+    ru: '<b>Совет по workspace:</b> если не указано иное, при выборе источника в OneLake всегда выбирайте строку <b>Lakehouse</b> (не <code>SQLEndpoint</code>) с <b>вашим workspace</b> в столбце <b>Location</b>.'
+  };
+  function setTip(){
+    const el = $("wstip");
+    if (el) el.innerHTML = TIPS[lang] || TIPS.en;
+  }
+  const prevRender = render;
+  render = function(){ prevRender(); setTip(); };
+  setTip();
 })();
 
 render();
