@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validate Staging & Load DW_IMSALES — Nov 28, 2026 (Steps 1–61)</title>
+<style>
+:root{
+  --bg:#f4f5f7; --card:#ffffff; --ink:#1b1f24; --muted:#5b6470; --line:#dde1e6;
+  --accent:#0f7b6c; --accent-ink:#ffffff; --hl:#e5322d; --chip:#eef1f4;
+  --success:#10b981;
+}
+:root[data-theme="dark"]{--bg:#14171a;--card:#1d2125;--ink:#eceff2;--muted:#9aa4af;--line:#2c3238;--accent:#2bb5a0;--accent-ink:#06201b;--hl:#ff5a54;--chip:#272d33}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1160px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+h1{font-size:18px;margin:0}
+h1 small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+.tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--card);color:var(--muted);padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.stage{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.06)}
+.shotbox{display:flex;justify-content:center;background:#0b0d0f}
+.shotbox .shot{flex:none;width:100%}
+.shot{position:relative;line-height:0;overflow:hidden;user-select:none}
+.shot img{width:100%;height:auto;display:block}
+.hl{position:absolute;border:3px solid var(--hl);border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.2);pointer-events:none;animation:pulse 1.4s ease-in-out infinite;transition:all .2s ease}
+.hl.clickable{pointer-events:auto;cursor:pointer}
+.hl.clicked{animation:flash .3s ease-out;border-color:var(--success)}
+@keyframes pulse{0%,100%{outline:0 solid rgba(229,50,45,.6)}50%{outline:8px solid rgba(229,50,45,0)}}
+@keyframes flash{0%{transform:scale(0.96);outline:12px solid rgba(16,185,129,.8)}100%{transform:scale(1);outline:0 solid rgba(16,185,129,0)}}
+.cursor{position:absolute;width:34px;height:34px;pointer-events:none;transform:translate(-4px,-4px);animation:tap 1.4s ease-in-out infinite;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));transition:left .2s ease, top .2s ease}
+@keyframes tap{0%,100%{translate:0 0}50%{translate:-5px -5px}}
+.panel{position:relative;z-index:2;background:var(--card);padding:16px 18px 18px;border-top:1px solid var(--line);display:flex;gap:14px;align-items:flex-start}
+.num{flex:none;width:38px;height:38px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700}
+.txt{flex:1;min-width:0}
+.chapter-badge{display:inline-block;background:var(--line);color:var(--ink);font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;margin-bottom:6px;margin-right:6px}
+.chip{display:inline-block;background:var(--chip);color:var(--muted);font-size:12px;padding:2px 9px;border-radius:99px;margin-bottom:4px;letter-spacing:.02em;text-transform:uppercase;font-weight:600}
+.txt p{margin:0;font-size:17px;line-height:1.45;white-space:pre-line;user-select:text}
+.txt code{background:var(--chip);padding:1px 6px;border-radius:4px;font:14px ui-monospace,SFMono-Regular,Consolas,monospace}
+.txt code.cp{cursor:copy;user-select:all}
+.txt code.cp.copied{outline:2px solid var(--accent)}
+.txt b{background:var(--chip);padding:0 5px;border-radius:4px}
+nav{display:flex;align-items:center;gap:12px;margin-top:12px}
+nav button.nav{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:12px 22px;border-radius:10px;font:inherit;font-weight:600;cursor:pointer;min-width:110px}
+nav button.nav.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+nav button.nav:disabled{opacity:.4;cursor:default}
+.dots{flex:1;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-height:64px;overflow-y:auto;padding:4px}
+.dots button{width:12px;height:12px;border-radius:50%;border:0;background:var(--line);cursor:pointer;padding:0;transition:transform .15s}
+.dots button[aria-current="true"]{background:var(--accent);transform:scale(1.3)}
+.hint{color:var(--muted);font-size:13px;text-align:center;margin-top:10px}
+.fsbtn{border:1px solid var(--line);background:var(--card);color:var(--muted);padding:6px 12px;border-radius:8px;font:inherit;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.fsbtn:hover{color:var(--ink);border-color:var(--muted)}
+#fsx{display:none}
+.lesson, .chapters-menu{display:none;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 12px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:14px}
+.lesson.open, .chapters-menu.open{display:flex}
+.chapters-menu select{padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit;max-width:100%}
+.lesson input{width:64px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+.lesson button{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);padding:6px 14px;border-radius:8px;font:inherit;font-size:13px;cursor:pointer}
+.lesson .lnote{color:var(--muted);font-size:12px}
+body.fs .lesson, body.fs .chapters-menu{display:none}
+/* full-page mode */
+body.fs{overflow:hidden;background:#0b0d0f}
+body.fs .wrap{max-width:none;padding:0;height:100vh;display:flex;flex-direction:column}
+body.fs header,body.fs .hint,body.fs .dots{display:none}
+body.fs .stage{flex:1;min-height:0;display:flex;flex-direction:column;border:0;border-radius:0;background:#0b0d0f}
+body.fs .shotbox{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+body.fs .shot{flex:none}
+body.fs .panel{padding:8px 14px;gap:12px;align-items:center;border-top:1px solid var(--line);background:var(--card)}
+body.fs .num{width:30px;height:30px;font-size:14px}
+body.fs .txt p{font-size:15px;line-height:1.35}
+body.fs .chip{margin:0 8px 0 0;font-size:11px}
+body.fs .panel nav{margin:0;gap:8px;flex:none}
+body.fs nav button.nav{padding:7px 16px;min-width:0}
+body.fs #fsx{display:block;position:fixed;top:8px;right:8px;z-index:5;opacity:.65;background:var(--card)}
+body.fs #fsx:hover{opacity:1}
+.speech{display:none;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+.speech.ready{display:flex}
+.say{padding:7px 14px;font-size:14px;font-weight:600}
+.say.speaking{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.say svg{width:18px;height:18px;flex:none}
+.speech label{font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+body.fs .speech{margin-top:4px}
+@media (max-width:640px){
+  .wrap{padding:10px 12px}
+  nav button.nav{padding:10px 14px;min-width:80px}
+  .txt p{font-size:15px}
+  .panel{padding:12px}
+}
+/* sections bar, copyable code, pinned note */
+.sections{display:none;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.sections.show{display:flex}
+.sections button{border:1px solid var(--line);background:var(--card);color:var(--muted);padding:5px 11px;border-radius:8px;font:inherit;font-size:13px;cursor:pointer;transition:.15s}
+.sections button:hover{color:var(--ink);border-color:var(--accent)}
+.sections button[aria-current="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+body.fs .sections.show{margin:0;padding:6px 140px 6px 12px;background:var(--card);border-bottom:1px solid var(--line);flex:none;z-index:4}
+body.fs .sections button{padding:4px 10px;font-size:12px}
+.codebox{display:none;margin-top:8px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;align-items:flex-start;gap:10px}
+.codebox.show{display:flex}
+.codebox pre{margin:0;flex:1;font:13px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;word-break:break-word;color:var(--ink);user-select:text}
+.codebox button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:4px 10px;border-radius:6px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.codebox button:hover{border-color:var(--accent);color:var(--accent)}
+body.fs .codebox{margin-top:4px;padding:5px 8px}
+body.fs .codebox pre{font-size:12px;max-height:54px;overflow:auto}
+.wstip{margin:0 0 10px;padding:7px 12px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;background:var(--card);font-size:13px;color:var(--muted)}
+.wstip b{color:var(--ink)}
+.wstip code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12px}
+body.fs .wstip{display:none!important}
+.lesson select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit;max-width:100%}
+/* frame editor (Ctrl+Shift+E) */
+.bl{position:absolute;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);background:rgba(240,242,245,0.28);border-radius:4px;pointer-events:none;z-index:1}
+body.edit-mode .hl{pointer-events:auto;cursor:move;animation:none;outline:2px dashed #fff;z-index:3}
+body.edit-mode .bl{pointer-events:auto;cursor:move;outline:1.5px dashed #0ea5e9;z-index:2}
+.eh{position:absolute;width:11px;height:11px;background:#fff;border:2px solid var(--hl);border-radius:2px;box-sizing:border-box;z-index:5}
+.bl .eh{border-color:#0ea5e9}
+.bdel{position:absolute;top:-9px;right:-9px;width:18px;height:18px;border-radius:50%;background:#0ea5e9;color:#fff;border:0;font:700 12px/18px sans-serif;text-align:center;cursor:pointer;z-index:6;padding:0}
+.eh[data-d="nw"]{top:-6px;left:-6px;cursor:nwse-resize}
+.eh[data-d="ne"]{top:-6px;right:-6px;cursor:nesw-resize}
+.eh[data-d="se"]{bottom:-6px;right:-6px;cursor:nwse-resize}
+.eh[data-d="sw"]{bottom:-6px;left:-6px;cursor:nesw-resize}
+.eh[data-d="n"]{top:-6px;left:50%;transform:translateX(-50%);cursor:ns-resize}
+.eh[data-d="s"]{bottom:-6px;left:50%;transform:translateX(-50%);cursor:ns-resize}
+.eh[data-d="w"]{left:-6px;top:50%;transform:translateY(-50%);cursor:ew-resize}
+.eh[data-d="e"]{right:-6px;top:50%;transform:translateY(-50%);cursor:ew-resize}
+.ebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;border:1px solid var(--hl);border-radius:10px;background:var(--card);font-size:13px}
+.ebar code{background:var(--chip);padding:2px 6px;border-radius:4px;font-size:12px}
+.ebar button{border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:5px 10px;border-radius:6px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.ebar button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+</style>
+</head>
+<body>
+<button class="fsbtn" id="fsx"></button>
+<div class="wrap">
+  <header>
+    <h1 id="title"></h1>
+    <div class="tools">
+      <button class="fsbtn" id="chbtn" title="Chapters">📑 <span id="chlbl">Chapters</span></button>
+      <button class="fsbtn" id="modebtn" title="Toggle Trainer Mode">🎯 <span id="modelbl">Trainer Mode</span></button>
+      <button class="fsbtn" id="thmbtn" title="Theme">🌓</button>
+      <button class="fsbtn" id="lsb"></button>
+      <button class="fsbtn" id="fsb" title="F"></button>
+      <div class="seg" role="group" aria-label="Language">
+        <button data-lang="en" aria-pressed="false">EN</button>
+        <button data-lang="ru" aria-pressed="false">RU</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="chapters-menu" id="chaptersMenu">
+    <span>Раздел / Chapter:</span>
+    <select id="chapterSelect"></select>
+  </div>
+
+  <div class="wstip" id="wstip" style="display:none"></div>
+
+  <div class="lesson" id="lesson">
+    <select id="lsec" style="display:none"></select>
+    <span id="lfrom"></span> <input type="number" id="lf" min="1" value="1">
+    <span id="lto"></span> <input type="number" id="lt" min="1" value="1">
+    <button id="lsave"></button>
+    <span class="lnote" id="lnote"></span>
+  </div>
+
+  <div class="sections" id="sections"></div>
+  <div class="stage">
+    <div class="shotbox" id="shotbox">
+      <div class="shot" id="shot">
+        <img id="img" alt="">
+        <div class="hl clickable" id="hl" title="Click here to advance"></div>
+        <svg class="cursor" id="cur" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 2l15 9.5-6.5 1.6 3.7 6.9-3 1.6-3.7-6.9L4.5 19z" fill="#fff" stroke="#111" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+    <div class="panel" id="panel">
+      <div class="num" id="num"></div>
+      <div class="txt">
+        <div id="chapterBadgeContainer"></div>
+        <span class="chip" id="chip"></span>
+        <p id="text"></p>
+        <div class="codebox" id="codebox"><pre id="codepre"></pre><button id="copybtn" type="button"></button></div>
+        <div class="speech" id="speech">
+          <button class="fsbtn say" id="say" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></svg><span id="saylbl"></span></button>
+          <label><input type="checkbox" id="autoread"> <span id="autolbl"></span></label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav>
+    <button class="nav" id="prev"></button>
+    <div class="dots" id="dots"></div>
+    <button class="nav primary" id="next"></button>
+  </nav>
+  <div class="hint" id="hint"></div>
+</div>
+
+<script id="app">
+const STEPS = [{"img":"shot_quick_1795862270076.png","act":"click","box":[27.5,10.2,3.8,3.2],"en":"In <b>PL_SALES_VALIDATE_STAGING</b>, click <b>Run</b> to execute all staging validation rules. <i>Why: this populates dbo.log_quality_checks with Rule 1–4 results for every staging table.</i>","ru":"В пайплайне <b>PL_SALES_VALIDATE_STAGING</b> нажмите <b>Run</b>, чтобы запустить проверки качества. <i>Зачем: это запишет результаты правил 1–4 для всех staging-таблиц в dbo.log_quality_checks.</i>"},{"img":"shot_quick_1795862362834.png","act":"look","box":[17.6,41.4,23.6,44.4],"en":"Inspect the top half of <b>SQL Rule 1 on STG DIM CLIENT</b>. <i>Why: Rule 1 logs ID_CHECK = 1 ('check integrity of BK') for stg_dim_client into log_quality_checks.</i>","ru":"Просмотрите верхнюю часть скрипта <b>SQL Rule 1 on STG DIM CLIENT</b>. <i>Зачем: правило 1 записывает проверку ID_CHECK = 1 ('check integrity of BK') для stg_dim_client в log_quality_checks.</i>"},{"img":"shot_quick_1795862428816.png","act":"look","box":[17.6,44.2,23.6,45.5],"en":"Scroll down in the Script box to check the <b>CASE</b> logic. <i>Why: any business key with count(*) &gt; 1 triggers 'FAIL'; otherwise it logs 'OK'.</i>","ru":"Прокрутите окно Script вниз и проверьте условие <b>CASE</b>. <i>Зачем: любой бизнес-ключ с count(*) &gt; 1 даёт 'FAIL', иначе — 'OK'.</i>"},{"img":"shot_quick_1795862442585.png","act":"look","box":[17.6,46.8,23.6,45.5],"en":"Review <b>SQL Rule 2 on STG DIM CLIENT</b> (ID_CHECK = 2). <i>Why: unlike Rule 1 (business key), Rule 2 groups by all non-BK dimension attributes to verify full row uniqueness.</i>","ru":"Проверьте <b>SQL Rule 2 on STG DIM CLIENT</b> (ID_CHECK = 2). <i>Зачем: в отличие от правила 1, правило 2 группирует по всем неключевым атрибутам, проверяя уникальность строк.</i>"},{"img":"shot_quick_1795862533053.png","act":"look","box":[17.6,53,23.6,45.5],"en":"In <b>SQL Rule 1 on STG DIM PRODUCT</b>, only the table label (<b>stg_dim_product</b>), source table, and business key (<b>bk_product</b>) change. <i>Why: Rule 1 follows one reusable SQL template across all dimensions.</i>","ru":"В <b>SQL Rule 1 on STG DIM PRODUCT</b> меняются только имя таблицы (<b>stg_dim_product</b>) и бизнес-ключ (<b>bk_product</b>). <i>Зачем: правило 1 переиспользуется как единый шаблон для всех измерений.</i>"},{"img":"shot_quick_1795862662065.png","act":"look","box":[17.6,53.6,23.6,44.9],"en":"In <b>SQL Rule 2 on STG DIM PRODUCT</b>, list every non-BK product attribute in <b>GROUP BY</b>. <i>Why: omitting an attribute would cause false duplicate warnings.</i>","ru":"В <b>SQL Rule 2 on STG DIM PRODUCT</b> перечислите в <b>GROUP BY</b> все неключевые атрибуты товара. <i>Зачем: иначе проверка ошибочно посчитает разные товары дубликатами.</i>"},{"img":"shot_quick_1795862863638.png","act":"click","box":[6.5,95.5,13,3.3],"en":"Open your workspace folder <b>02 Staging Area</b>, scroll down, and click <b>STG_IMSALES_2026_2027</b>. <i>Why: we need to query dbo.log_quality_checks to see which staging tables failed.</i>","ru":"Откройте папку <b>02 Staging Area</b>, прокрутите вниз и выберите <b>STG_IMSALES_2026_2027</b>. <i>Зачем: проверим таблицу dbo.log_quality_checks и найдём ошибки валидации.</i>"},{"img":"shot_quick_1795862913506.png","act":"click","box":[85.4,67.1,13.2,2.9],"en":"Query <b>SELECT TOP (100) ... FROM [dbo].[log_quality_checks]</b> and click the <b>etl_result</b> column menu. <i>Why: filtering etl_result isolates any failing checks.</i>","ru":"Выполните запрос к <b>[dbo].[log_quality_checks]</b> и откройте меню столбца <b>etl_result</b>. <i>Зачем: фильтр позволит быстро выделить проваленные проверки.</i>"},{"img":"shot_quick_1795862932729.png","act":"click","box":[85.8,54.8,3.5,3.1],"en":"Check only <b>FAIL</b> and click <b>Apply</b>. <i>Why: hides passing checks so you can focus only on broken tables.</i>","ru":"Оставьте галочку только на <b>FAIL</b> и нажмите <b>Apply</b>. <i>Зачем: скроет успешные проверки и оставит только проблемные таблицы.</i>"},{"img":"shot_quick_1795863022273.png","act":"click","box":[0.2,46.8,3.3,6.8],"en":"Both <b>FAIL</b> rows belong to <b>stg_dim_shipper</b> (repeated BK and non-unique attributes). Click your workspace icon on the left rail. <i>Why: we will open the shipper Dataflow to remove duplicates.</i>","ru":"Обе ошибки <b>FAIL</b> относятся к <b>stg_dim_shipper</b> (дубли BK и атрибутов). Нажмите на иконку рабочей области слева. <i>Зачем: откроем Dataflow перевозчиков, чтобы убрать дубликаты.</i>"},{"img":"shot_quick_1795863037582.png","act":"click","box":[9.5,65,11.2,2.8],"en":"Click <b>DF LOAD DIM SHIPPER STG</b> to edit it in Power Query.","ru":"Откройте <b>DF LOAD DIM SHIPPER STG</b> в Power Query."},{"img":"shot_quick_1795863057210.png","act":"click","box":[53.6,13.6,2.8,3],"en":"Make sure <b>ShipperID</b> is selected (NOT <i>BelowZeroCapable</i>!), click <b>Remove rows &rarr; Remove duplicates</b>, verify all <b>3 rows</b> (IDs 1, 2, 3) remain, then choose <b>Save &amp; close</b>. <i>Why: deduplicating on BelowZeroCapable would wrongly drop ShipperID 2 (United Package).</i>","ru":"Убедитесь, что выделен <b>ShipperID</b> (НЕ <i>BelowZeroCapable</i>!), нажмите <b>Remove rows &rarr; Remove duplicates</b>, проверьте, что остались все <b>3 строки</b> (ID 1, 2, 3), и выберите <b>Save &amp; close</b>. <i>Зачем: очистка по BelowZeroCapable ошибочно удалит ShipperID 2 (United Package).</i>"},{"img":"shot_quick_1795863230318.png","act":"click","box":[9.5,77.9,9.2,3],"en":"Back in <b>02 Staging Area</b>, click <b>DF load stg_fact_inventory</b> to verify its date filter. <i>Why: any MovementDate before 2024 fails parent-key checks against stg_dim_date.</i>","ru":"В папке <b>02 Staging Area</b> откройте <b>DF load stg_fact_inventory</b>, чтобы проверить фильтр дат. <i>Зачем: даты MovementDate до 2024 года не проходят проверку внешнего ключа stg_dim_date.</i>"},{"img":"shot_quick_1795863241364.png","act":"click","box":[90,59.6,8.2,2.2],"en":"Click the gear icon next to <b>Filtered rows</b> under Applied steps to inspect the <b>MovementDate</b> filter.","ru":"Нажмите шестерёнку рядом с шагом <b>Filtered rows</b> в панели Applied steps, чтобы проверить фильтр <b>MovementDate</b>."},{"img":"shot_quick_1795863372172.png","act":"select","box":[37.5,48,29,18.5],"en":"Set <b>MovementDate</b> to <b>is after or equal to 1/1/2024</b> and click <b>OK</b>. <i>Why: keeps only dates that exist in dim_date (2024–2026).</i>","ru":"Установите для <b>MovementDate</b> условие <b>is after or equal to 1/1/2024</b> и нажмите <b>OK</b>. <i>Зачем: оставляет только даты, которые есть в dim_date (2024–2026).</i>"},{"img":"shot_quick_1795863405016.png","act":"click","box":[4.3,30.6,7.4,3.2],"en":"Open the <b>Save &amp; run</b> dropdown and click <b>Save &amp; close</b>. <i>Why: we will reload all staging tables together via the staging pipeline.</i>","ru":"Раскройте меню <b>Save &amp; run</b> и нажмите <b>Save &amp; close</b>. <i>Зачем: мы перезагрузим все staging-таблицы вместе через staging-пайплайн.</i>"},{"img":"shot_quick_1795863501077.png","act":"click","box":[25,9.2,3.5,3],"en":"Open <b>PL_IMSALES_LOAD_STG</b> and click <b>Run</b>. <i>Why: clears old staging rows and reloads the corrected Shipper and Inventory tables.</i>","ru":"Откройте <b>PL_IMSALES_LOAD_STG</b> и нажмите <b>Run</b>. <i>Зачем: очистит старые данные и перезагрузит исправленные таблицы Shipper и Inventory.</i>"},{"img":"shot_quick_1795863686019.png","act":"look","box":[43.2,51.8,10.2,2.6],"en":"Confirm <b>Pipeline status: Succeeded</b> across all 12 activities (you can also re-run <b>PL_SALES_VALIDATE_STAGING</b> to verify every check is now OK).","ru":"Убедитесь, что <b>Pipeline status: Succeeded</b> для всех 12 активностей (при желании повторно запустите <b>PL_SALES_VALIDATE_STAGING</b>, чтобы убедиться, что все проверки стали OK)."},{"img":"shot_quick_1795864240369.png","act":"click","box":[82.6,68.8,14.8,14.6],"en":"In <b>02 Staging Area</b> (or your DW folder), click <b>+ New item</b> and select <b>Pipeline</b> to build the final Data Warehouse load.","ru":"В папке <b>02 Staging Area</b> (или папке DW) нажмите <b>+ New item</b> и выберите <b>Pipeline</b> для загрузки итогового Data Warehouse."},{"img":"shot_quick_1795864268978.png","act":"type","box":[35,42.5,29.5,19.5],"en":"Enter Name <b>PL_IMSALES_LOAD_DW</b>, confirm Location, and click <b>Create</b>.","ru":"Введите имя <b>PL_IMSALES_LOAD_DW</b>, проверьте Location и нажмите <b>Create</b>."},{"img":"shot_quick_1795864312683.png","act":"click","box":[34.8,9.1,3.8,2.8],"en":"On the <b>Activities</b> tab, click <b>Script</b> to add the SQL clearing step for DW dimension tables.","ru":"На вкладке <b>Activities</b> нажмите <b>Script</b>, чтобы добавить шаг SQL-очистки таблиц измерений в DW."},{"img":"shot_quick_1795864333670.png","act":"type","box":[3.8,63.5,27,4.5],"en":"On the General tab, set <b>Name</b> to <b>sql clear all dimensions in DW</b>, then switch to the <b>Settings</b> tab.","ru":"На вкладке General укажите <b>Name: sql clear all dimensions in DW</b>, затем перейдите на вкладку <b>Settings</b>."},{"img":"shot_quick_1795864357325.png","act":"type","box":[3.8,63.5,34.5,35.5],"en":"In <b>Settings</b>, select Connection &amp; Warehouse <b>DW_IMSALES_20262027</b>, choose <b>NonQuery</b>, and enter (with a <b>single dot</b> <code>dbo.</code> and singular <code>dim_product</code>):<br><code>TRUNCATE TABLE dbo.dim_client;<br>TRUNCATE TABLE dbo.dim_product;<br>TRUNCATE TABLE dbo.dim_date;<br>TRUNCATE TABLE dbo.dim_staff;<br>TRUNCATE TABLE dbo.dim_shipper;</code>","ru":"На вкладке <b>Settings</b> выберите Connection и Warehouse <b>DW_IMSALES_20262027</b>, режим <b>NonQuery</b> и вставьте (с <b>одной точкой</b> <code>dbo.</code> и в ед. числе <code>dim_product</code>):<br><code>TRUNCATE TABLE dbo.dim_client;<br>TRUNCATE TABLE dbo.dim_product;<br>TRUNCATE TABLE dbo.dim_date;<br>TRUNCATE TABLE dbo.dim_staff;<br>TRUNCATE TABLE dbo.dim_shipper;</code>"},{"img":"shot_quick_1795864592405.png","act":"type","box":[3.8,71.8,27,4.2],"en":"Add a second <b>Script</b> activity, set <b>Name</b> to <b>SQL clear all FACTS in DW</b>, then open its <b>Settings</b> tab.","ru":"Добавьте второй блок <b>Script</b>, задайте <b>Name: SQL clear all FACTS in DW</b> и откройте вкладку <b>Settings</b>."},{"img":"shot_quick_1795864682360.png","act":"type","box":[3.8,63.5,34.5,35.5],"en":"In <b>Settings</b>, choose <b>DW_IMSALES_20262027</b>, select <b>NonQuery</b>, and enter <code>TRUNCATE TABLE dbo.fact_sales; TRUNCATE TABLE dbo.fact_inventory;</code>. Next, open <b>...</b> on the Activities ribbon to add a <b>Wait</b> activity.","ru":"В <b>Settings</b> выберите <b>DW_IMSALES_20262027</b>, <b>NonQuery</b> и введите <code>TRUNCATE TABLE dbo.fact_sales; TRUNCATE TABLE dbo.fact_inventory;</code>. Затем откройте <b>...</b> на ленте Activities, чтобы добавить <b>Wait</b>."},{"img":"shot_quick_1795865051677.png","act":"type","box":[3.8,63.5,27,4.5],"en":"Connect both clear Scripts into <b>Wait1</b>, add a <b>Copy data</b> activity connected after Wait1, set <b>Name</b> to <b>CD load Dim Product</b>, then open <b>Source</b>.","ru":"Подключите оба Script к <b>Wait1</b>, добавьте активность <b>Copy data</b> после Wait1, укажите <b>Name: CD load Dim Product</b> и откройте <b>Source</b>."},{"img":"shot_quick_1795865555462.png","act":"type","box":[3.8,63.5,36,30],"en":"In <b>Source</b>, select Connection &amp; Warehouse <b>STG_IMSALES_2026_2027</b>, choose <b>Query</b>, and enter:<br><code>SELECT row_number() OVER (ORDER BY bk_product ASC) AS sk_product, * FROM STG_IMSALES_2026_2027.dbo.stg_dim_product;</code><br>Then click the <b>Destination</b> tab. <i>Why: generates sequential surrogate keys sk_product on the fly.</i>","ru":"В <b>Source</b> выберите Connection и Warehouse <b>STG_IMSALES_2026_2027</b>, режим <b>Query</b> и введите:<br><code>SELECT row_number() OVER (ORDER BY bk_product ASC) AS sk_product, * FROM STG_IMSALES_2026_2027.dbo.stg_dim_product;</code><br>Затем откройте вкладку <b>Destination</b>. <i>Зачем: генерирует суррогатный ключ sk_product.</i>"},{"img":"shot_quick_1795865434820.png","act":"select","box":[3.8,63.5,36,23],"en":"In <b>Destination</b>, select <b>DW_IMSALES_20262027</b>, Table option <b>Use existing</b>, Table <b>dbo.dim_product</b>, and Write behavior <b>Insert</b>, then click the <b>Mapping</b> tab.","ru":"В <b>Destination</b> выберите <b>DW_IMSALES_20262027</b>, режим <b>Use existing</b>, таблицу <b>dbo.dim_product</b> и <b>Insert</b>, затем перейдите на вкладку <b>Mapping</b>."},{"img":"shot_quick_1795865568016.png","act":"look","box":[3.8,67.5,55,31.5],"en":"Click <b>Import schemas</b> and verify all columns map 1-to-1 (including <b>sk_product</b>). Next, click the <b>Clone</b> icon on <b>CD load Dim Product</b> (or Ctrl+C / Ctrl+V) to duplicate it for Shipper.","ru":"Нажмите <b>Import schemas</b> и проверьте соответствие всех столбцов (включая <b>sk_product</b>). Затем нажмите иконку <b>Clone</b> на блоке <b>CD load Dim Product</b> (или Ctrl+C / Ctrl+V), чтобы скопировать его для Shipper."},{"img":"shot_quick_1795865980829.png","act":"type","box":[3.8,63.5,36,30],"en":"Rename the cloned block to <b>CD load Dim shipper</b>. In <b>Source</b>, keep <b>STG_IMSALES_2026_2027</b> and <b>Query</b>, and update the SQL to <b>bk_shipper ASC AS sk_shipper</b> from <b>stg_dim_shipper</b>, then click <b>Destination</b>.","ru":"Переименуйте копию в <b>CD load Dim shipper</b>. В <b>Source</b> оставьте <b>STG_IMSALES_2026_2027</b> и <b>Query</b>, обновите SQL на <b>bk_shipper ASC AS sk_shipper</b> из <b>stg_dim_shipper</b> и откройте <b>Destination</b>."},{"img":"shot_quick_1795866008376.png","act":"select","box":[3.8,63.5,36,23],"en":"In <b>Destination</b>, set <b>DW_IMSALES_20262027</b>, <b>Use existing</b>, Table <b>dbo.dim_shipper</b>, and <b>Insert</b>, then click <b>Mapping</b>.","ru":"В <b>Destination</b> выберите <b>DW_IMSALES_20262027</b>, <b>Use existing</b>, таблицу <b>dbo.dim_shipper</b> и <b>Insert</b>, затем откройте <b>Mapping</b>."},{"img":"shot_quick_1795866049882.png","act":"drag","box":[41.2,24.8,17.2,3],"en":"After clicking <b>Import schemas</b> on Mapping to verify the 5 shipper columns, drag the green <b>On success</b> handle from <b>Wait1</b> to <b>CD load Dim shipper</b>. <i>Why: dimensions must run only after Wait1 finishes clearing DW.</i>","ru":"После <b>Import schemas</b> на вкладке Mapping проверьте 5 столбцов shipper и протяните зелёную стрелку <b>On success</b> от <b>Wait1</b> к <b>CD load Dim shipper</b>. <i>Зачем: загрузка должна идти только после очистки перед Wait1.</i>"},{"img":"shot_quick_1795866073078.png","act":"click","box":[51.4,33.4,1.4,2.2],"en":"Click <b>Clone</b> on <b>CD load Dim shipper</b> to create the Copy data activity for Staff.","ru":"Нажмите <b>Clone</b> на блоке <b>CD load Dim shipper</b>, чтобы создать активность Copy data для Staff."},{"img":"shot_quick_1795866120613.png","act":"type","box":[3.8,63.5,27,4.5],"en":"Connect <b>Wait1</b> to the new block (if not connected), set <b>Name</b> to <b>CD load Dim staff</b>, then open <b>Source</b>.","ru":"Подключите <b>Wait1</b> к новому блоку (если не подключён), укажите <b>Name: CD load Dim staff</b> и откройте <b>Source</b>."},{"img":"shot_quick_1795866154845.png","act":"type","box":[3.8,63.5,36,30],"en":"In <b>Source</b>, keep <b>STG_IMSALES_2026_2027</b> and <b>Query</b>, and update the SQL to <b>ORDER BY bk_staff ASC AS sk_staff</b> from <b>stg_dim_staff</b>, then open <b>Destination</b>.","ru":"В <b>Source</b> оставьте <b>STG_IMSALES_2026_2027</b> и <b>Query</b>, обновите SQL на <b>ORDER BY bk_staff ASC AS sk_staff</b> из <b>stg_dim_staff</b> и откройте <b>Destination</b>."},{"img":"shot_quick_1795866165586.png","act":"select","box":[3.8,63.5,36,23],"en":"In <b>Destination</b>, choose <b>DW_IMSALES_20262027</b>, <b>Use existing</b>, Table <b>dbo.dim_staff</b>, and <b>Insert</b>, then click <b>Mapping</b>.","ru":"В <b>Destination</b> выберите <b>DW_IMSALES_20262027</b>, <b>Use existing</b>, таблицу <b>dbo.dim_staff</b> и <b>Insert</b>, затем перейдите на <b>Mapping</b>."},{"img":"shot_quick_1795866182641.png","act":"click","box":[10.8,9.1,4.7,2.8],"en":"Import schemas and verify the staff column mappings below, then click <b>Dataflow</b> on the Activities toolbar for Dim Client. <i>Why: here we build sk_client using a Dataflow Gen2 Index column.</i>","ru":"Нажмите Import schemas и проверьте маппинг столбцов staff внизу, затем нажмите <b>Dataflow</b> на панели Activities для Dim Client. <i>Зачем: здесь создадим sk_client через столбец индекса в Dataflow Gen2.</i>"},{"img":"shot_quick_1795866265749.png","act":"type","box":[3.8,63.5,27,4.5],"en":"Set <b>Name</b> to <b>DF Load Dim client</b> on the General tab, then open <b>Settings</b>.","ru":"На вкладке General задайте <b>Name: DF Load Dim client</b> и откройте <b>Settings</b>."},{"img":"shot_quick_1795866309890.png","act":"click","box":[3.8,63.5,35,9],"en":"Verify your <b>Workspace</b> is selected and click <b>+ New</b> next to Dataflow to create the Dataflow Gen2.","ru":"Убедитесь, что выбран ваш <b>Workspace</b>, и нажмите <b>+ New</b> рядом с Dataflow, чтобы создать Dataflow Gen2."},{"img":"shot_quick_1795866396167.png","act":"type","box":[39.5,45.5,20.5,14.5],"en":"Name the dataflow (e.g., <b>DF LOAD CLIENT</b>) and click <b>Create</b>.","ru":"Задайте имя (например, <b>DF LOAD CLIENT</b>) и нажмите <b>Create</b>."},{"img":"shot_quick_1795866419811.png","act":"click","box":[45.3,68,13.1,2.4],"en":"Click <b>Get data from another source &rarr;</b> to select your staging warehouse.","ru":"Нажмите <b>Get data from another source &rarr;</b>, чтобы выбрать staging-хранилище."},{"img":"shot_quick_1795866442140.png","act":"click","box":[13.5,67.2,78,4],"en":"Search <b>STG</b> and select <b>STG_IMSALES_2026_2027</b> located in <b>your own workspace</b>. <i>Why: multiple workspaces share the same warehouse name—verify the Location column.</i>","ru":"Найдите по поиску <b>STG</b> и выберите <b>STG_IMSALES_2026_2027</b> именно из <b>вашего рабочего пространства</b>. <i>Зачем: в разных workspace одинаковые имена — проверяйте столбец Location.</i>"},{"img":"shot_quick_1795866457849.png","act":"click","box":[90,91.2,3.9,3.4],"en":"Check <b>stg_dim_client</b> and click <b>Create</b>.","ru":"Отметьте <b>stg_dim_client</b> и нажмите <b>Create</b>."},{"img":"shot_quick_1795866490008.png","act":"click","box":[21.5,19.2,5.9,2.6],"en":"Go to <b>Add column &rarr; Index column &rarr; From 1</b>. <i>Why: surrogate keys start from 1, not 0.</i>","ru":"Откройте <b>Add column &rarr; Index column &rarr; From 1</b>. <i>Зачем: суррогатные ключи начинаются с 1, а не с 0.</i>"},{"img":"shot_quick_1795866495319.png","act":"click","box":[49.9,27.7,5.3,2.5],"en":"Double-click the <b>Index</b> header and rename it to <b>sk_client</b>.","ru":"Дважды кликните по заголовку <b>Index</b> и переименуйте его в <b>sk_client</b>."},{"img":"shot_quick_1795866529954.png","act":"look","box":[50,27.7,5,2.5],"en":"<i>(Optional)</i> Drag the <b>sk_client</b> column to the first position on the left to match <b>dbo.dim_client</b>.","ru":"<i>(Опционально)</i> Перетащите столбец <b>sk_client</b> на первое место слева, как в <b>dbo.dim_client</b>."},{"img":"shot_quick_1795866633436.png","act":"click","box":[97.3,91.2,1.8,2.4],"en":"In the bottom-right Query settings pane, click <b>+</b> next to <b>Data destination</b>.","ru":"В правом нижнем углу панели Query settings нажмите <b>+</b> рядом с <b>Data destination</b>."},{"img":"shot_quick_1795866636061.png","act":"click","box":[87.8,80.2,10.8,2.3],"en":"Select <b>Warehouse</b> as the data destination.","ru":"Выберите <b>Warehouse</b> в качестве приёмника данных."},{"img":"shot_quick_1795866646240.png","act":"click","box":[90.5,89.5,3.5,3.4],"en":"Keep your Organizational account connection and click <b>Next</b>.","ru":"Оставьте текущее подключение (Organizational account) и нажмите <b>Next</b>."},{"img":"shot_quick_1795866668899.png","act":"select","box":[10,23.5,20,62.5],"en":"Select <b>Existing table</b>, expand <b>DW_IMSALES_20262027 &rarr; dbo &rarr; dim_client</b>, and click <b>Next</b>.","ru":"Выберите <b>Existing table</b>, раскройте <b>DW_IMSALES_20262027 &rarr; dbo &rarr; dim_client</b> и нажмите <b>Next</b>."},{"img":"shot_quick_1795866673915.png","act":"select","box":[9,17.5,36,52],"en":"Choose Update method <b>Append</b>, verify all 6 <b>Column mapping</b> rows (sk_client through client_country), and click <b>Save settings</b>. <i>Why: the pipeline truncates dim_client before running this Dataflow.</i>","ru":"Выберите метод <b>Append</b>, проверьте все 6 строк <b>Column mapping</b> (от sk_client до client_country) и нажмите <b>Save settings</b>. <i>Зачем: пайплайн очищает dim_client перед запуском этого Dataflow.</i>"},{"img":"shot_quick_1795866689966.png","act":"click","box":[4.1,13,2.7,9],"en":"On the <b>Home</b> tab, open the <b>Save &amp; run</b> dropdown menu.","ru":"На вкладке <b>Home</b> откройте выпадающее меню под кнопкой <b>Save &amp; run</b>."},{"img":"shot_quick_1795866692203.png","act":"click","box":[4.3,30.3,7.8,3.1],"en":"Click <b>Save &amp; close</b> so the pipeline controls execution order.","ru":"Нажмите <b>Save &amp; close</b>, чтобы порядком запуска управлял пайплайн."},{"img":"shot_quick_1795866762056.png","act":"click","box":[4.2,9.1,6.5,2.9],"en":"Back in <b>PL_IMSALES_LOAD_DW</b>, connect <b>Wait1</b> to <b>DF Load Dim client</b>, then click <b>Copy data</b> on the Activities tab to add Dim Date. <i>Why: dim_date already has sk_date from staging, so a direct Copy data suffices.</i>","ru":"В <b>PL_IMSALES_LOAD_DW</b> подключите <b>Wait1</b> к <b>DF Load Dim client</b>, затем нажмите <b>Copy data</b> на вкладке Activities для Dim Date. <i>Зачем: у dim_date уже есть sk_date из staging, поэтому достаточно Copy data.</i>"},{"img":"shot_quick_1795866819543.png","act":"click","box":[4.3,19.8,10,3.2],"en":"Click <b>Add copy data activity</b>.","ru":"Нажмите <b>Add copy data activity</b>."},{"img":"shot_quick_1795866842120.png","act":"type","box":[3.8,63.5,27,4.5],"en":"Set <b>Name</b> to <b>CD load dim Date</b>, connect <b>Wait1</b>'s On success arrow to it, then open <b>Source</b>.","ru":"Укажите <b>Name: CD load dim Date</b>, протяните к нему стрелку On success от <b>Wait1</b> и откройте <b>Source</b>."},{"img":"shot_quick_1795866884539.png","act":"select","box":[3.8,63.5,35.5,16.5],"en":"In <b>Source</b>, select <b>STG_IMSALES_2026_2027</b>, Use query: <b>Table</b>, and Table <b>dbo.stg_dim_date</b>, then click the <b>Destination</b> tab.","ru":"В <b>Source</b> выберите <b>STG_IMSALES_2026_2027</b>, режим <b>Table</b> и таблицу <b>dbo.stg_dim_date</b>, затем перейдите на вкладку <b>Destination</b>."},{"img":"shot_quick_1795866934127.png","act":"select","box":[3.8,63.5,36,23],"en":"In <b>Destination</b>, choose <b>DW_IMSALES_20262027</b>, <b>Use existing</b>, Table <b>dbo.dim_date</b>, and <b>Insert</b>, then click the <b>Mapping</b> tab.","ru":"В <b>Destination</b> выберите <b>DW_IMSALES_20262027</b>, <b>Use existing</b>, таблицу <b>dbo.dim_date</b> и <b>Insert</b>, затем откройте вкладку <b>Mapping</b>."},{"img":"shot_quick_1795866959268.png","act":"look","box":[3.8,67.5,55,31.5],"en":"Click <b>Import schemas</b>, verify all columns match 1-to-1 (including <b>sk_date</b>), then switch to the <b>Home</b> tab.","ru":"Нажмите <b>Import schemas</b>, проверьте совпадение всех столбцов (включая <b>sk_date</b>), затем перейдите на вкладку <b>Home</b>."},{"img":"shot_quick_1795867016477.png","act":"click","box":[25,9.2,3.4,2.7],"en":"Click <b>Save</b>, then click <b>Run</b> to test clearing DW and loading all 5 dimensions.","ru":"Нажмите <b>Save</b>, затем <b>Run</b>, чтобы проверить очистку DW и загрузку всех 5 измерений."},{"img":"shot_quick_1795867656345.png","act":"look","box":[4.5,64.2,93.5,34.5],"en":"Check the <b>Output</b> tab and confirm <b>Pipeline status: Succeeded</b> with all 8 activities green. <i>All 5 dimensions are now loaded into DW_IMSALES_20262027!</i>","ru":"Проверьте вкладку <b>Output</b> и убедитесь, что <b>Pipeline status: Succeeded</b> и все 8 активностей зелёные. <i>Все 5 измерений загружены в DW_IMSALES_20262027!</i>"}];
+const IMAGES = {"shot_quick_1795862270076.png":"img-dw-2026-11-28/001.jpg","shot_quick_1795862362834.png":"img-dw-2026-11-28/002.jpg","shot_quick_1795862428816.png":"img-dw-2026-11-28/003.jpg","shot_quick_1795862442585.png":"img-dw-2026-11-28/004.jpg","shot_quick_1795862533053.png":"img-dw-2026-11-28/005.jpg","shot_quick_1795862662065.png":"img-dw-2026-11-28/006.jpg","shot_quick_1795862863638.png":"img-dw-2026-11-28/007.jpg","shot_quick_1795862913506.png":"img-dw-2026-11-28/008.jpg","shot_quick_1795862932729.png":"img-dw-2026-11-28/009.jpg","shot_quick_1795863022273.png":"img-dw-2026-11-28/010.jpg","shot_quick_1795863037582.png":"img-dw-2026-11-28/011.jpg","shot_quick_1795863057210.png":"img-dw-2026-11-28/012.jpg","shot_quick_1795863230318.png":"img-dw-2026-11-28/013.jpg","shot_quick_1795863241364.png":"img-dw-2026-11-28/014.jpg","shot_quick_1795863372172.png":"img-dw-2026-11-28/015.jpg","shot_quick_1795863405016.png":"img-dw-2026-11-28/016.jpg","shot_quick_1795863501077.png":"img-dw-2026-11-28/017.jpg","shot_quick_1795863686019.png":"img-dw-2026-11-28/018.jpg","shot_quick_1795864240369.png":"img-dw-2026-11-28/019.jpg","shot_quick_1795864268978.png":"img-dw-2026-11-28/020.jpg","shot_quick_1795864312683.png":"img-dw-2026-11-28/021.jpg","shot_quick_1795864333670.png":"img-dw-2026-11-28/022.jpg","shot_quick_1795864357325.png":"img-dw-2026-11-28/023.jpg","shot_quick_1795864592405.png":"img-dw-2026-11-28/024.jpg","shot_quick_1795864682360.png":"img-dw-2026-11-28/025.jpg","shot_quick_1795865051677.png":"img-dw-2026-11-28/026.jpg","shot_quick_1795865555462.png":"img-dw-2026-11-28/027.jpg","shot_quick_1795865434820.png":"img-dw-2026-11-28/028.jpg","shot_quick_1795865568016.png":"img-dw-2026-11-28/029.jpg","shot_quick_1795865980829.png":"img-dw-2026-11-28/030.jpg","shot_quick_1795866008376.png":"img-dw-2026-11-28/031.jpg","shot_quick_1795866049882.png":"img-dw-2026-11-28/032.jpg","shot_quick_1795866073078.png":"img-dw-2026-11-28/033.jpg","shot_quick_1795866120613.png":"img-dw-2026-11-28/034.jpg","shot_quick_1795866154845.png":"img-dw-2026-11-28/035.jpg","shot_quick_1795866165586.png":"img-dw-2026-11-28/036.jpg","shot_quick_1795866182641.png":"img-dw-2026-11-28/037.jpg","shot_quick_1795866265749.png":"img-dw-2026-11-28/038.jpg","shot_quick_1795866309890.png":"img-dw-2026-11-28/039.jpg","shot_quick_1795866396167.png":"img-dw-2026-11-28/040.jpg","shot_quick_1795866419811.png":"img-dw-2026-11-28/041.jpg","shot_quick_1795866442140.png":"img-dw-2026-11-28/042.jpg","shot_quick_1795866457849.png":"img-dw-2026-11-28/043.jpg","shot_quick_1795866490008.png":"img-dw-2026-11-28/044.jpg","shot_quick_1795866495319.png":"img-dw-2026-11-28/045.jpg","shot_quick_1795866529954.png":"img-dw-2026-11-28/046.jpg","shot_quick_1795866633436.png":"img-dw-2026-11-28/047.jpg","shot_quick_1795866636061.png":"img-dw-2026-11-28/048.jpg","shot_quick_1795866646240.png":"img-dw-2026-11-28/049.jpg","shot_quick_1795866668899.png":"img-dw-2026-11-28/050.jpg","shot_quick_1795866673915.png":"img-dw-2026-11-28/051.jpg","shot_quick_1795866689966.png":"img-dw-2026-11-28/052.jpg","shot_quick_1795866692203.png":"img-dw-2026-11-28/053.jpg","shot_quick_1795866762056.png":"img-dw-2026-11-28/054.jpg","shot_quick_1795866819543.png":"img-dw-2026-11-28/055.jpg","shot_quick_1795866842120.png":"img-dw-2026-11-28/056.jpg","shot_quick_1795866884539.png":"img-dw-2026-11-28/057.jpg","shot_quick_1795866934127.png":"img-dw-2026-11-28/058.jpg","shot_quick_1795866959268.png":"img-dw-2026-11-28/059.jpg","shot_quick_1795867016477.png":"img-dw-2026-11-28/060.jpg","shot_quick_1795867656345.png":"img-dw-2026-11-28/061.jpg"};
+const META = {"title_en":"Validate Staging & Load DW_IMSALES — Nov 28, 2026 (Steps 1–61)","title_ru":"Валидация Staging и загрузка DW_IMSALES — 28.11.2026 (Шаги 1–61)","sub_en":"PL_SALES_VALIDATE_STAGING, fixing Shipper/Inventory, and building PL_IMSALES_LOAD_DW (Dimensions)","sub_ru":"Пайплайн валидации, исправление Shipper/Inventory и сборка PL_IMSALES_LOAD_DW (Измерения)","default_lang":"en"};
+const I18N = {
+  en:{
+    title:"Interactive Step Guide",sub:"Step-by-step walk-through",
+    prev:"Back",next:"Next",done:"Start over",
+    hint:"Tip: click the highlighted box, use arrow keys to navigate, press F for full page.",
+    full:"Full page",lesson:"Cut a lesson",lfrom:"Steps from",lto:"to",
+    lsave:"Save lesson as HTML",lnote:"Saves a separate standalone HTML with only selected steps.",
+    exit:"Exit full page",
+    click:"Click",type:"Type",drag:"Drag",select:"Select",scroll:"Scroll",look:"Notice",step:"Step",
+    chapters:"Chapters",trainerOn:"Trainer Mode (Active)",trainerOff:"Overview Mode",
+    jumpTo:"Jump to chapter...",
+    say:"Listen",stopSay:"Stop",auto:"Read steps aloud automatically",
+    copy:"Copy",copied:"Copied!",pickSection:"Cut by section..."
+  },
+  ru:{
+    title:"Интерактивная инструкция",sub:"Пошаговое интерактивное руководство",
+    prev:"Назад",next:"Далее",done:"Сначала",
+    hint:"Подсказка: кликайте по рамке, листайте стрелками на клавиатуре, клавиша F — на весь экран.",
+    full:"На всю страницу",lesson:"Нарезать урок",lfrom:"Шаги с",lto:"по",
+    lsave:"Сохранить урок в HTML",lnote:"Сохранится отдельный автономный HTML только с выбранными шагами.",
+    exit:"Свернуть",
+    click:"Нажать",type:"Ввести",drag:"Протянуть",select:"Выбрать",scroll:"Прокрутить",look:"Обратите внимание",step:"Шаг",
+    chapters:"Разделы",trainerOn:"Режим тренажёра (вкл)",trainerOff:"Режим обзора",
+    jumpTo:"Перейти к разделу...",
+    say:"Слушать",stopSay:"Стоп",auto:"Читать шаги вслух автоматически",
+    copy:"Копировать",copied:"Скопировано!",pickSection:"Нарезать по разделу..."
+  }
+};
+
+for (const l of ["en","ru"]) {
+  if (META["title_"+l]) I18N[l].title = META["title_"+l];
+  if (META["sub_"+l]) I18N[l].sub = META["sub_"+l];
+}
+
+let lang = (META.default_lang && I18N[META.default_lang]) ? META.default_lang : "en";
+const LANG_KEY = "lang:" + (META.title_en || META.title_ru || "");
+try { const s = localStorage.getItem(LANG_KEY); if(s && I18N[s]) lang = s; } catch(e){}
+
+let i = 0;
+let editOn = false;
+let trainerMode = true;
+
+const $ = id => document.getElementById(id);
+
+// Caption: new lines are kept (CSS pre-line); text between backticks becomes a copyable chip
+const BT = String.fromCharCode(96);
+const BT_RE = new RegExp(BT + "([^" + BT + "]+)" + BT, "g");
+function capHtml(h) {
+  return String(h).replace(BT_RE, '<code class="cp" title="Click to copy">$1</code>');
+}
+function escHtml(s) {
+  return String(s).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;");
+}
+function safeJson(o) {
+  return JSON.stringify(o).replace(/</g, "\\u003c");
+}
+
+// Sections: a step with a chapterTitle starts a new section; step 1 always starts one.
+function secTitle(st) {
+  return (lang === "ru" ? (st.chapterTitleRu || st.chapterTitle) : (st.chapterTitle || st.chapterTitleRu)) || "";
+}
+function getSections() {
+  const out = [];
+  STEPS.forEach((st, idx) => {
+    if (st.chapterTitle || st.chapterTitleRu) out.push({ start: idx, st: st });
+  });
+  if (out.length && out[0].start !== 0) out.unshift({ start: 0, st: { chapterTitle: "Start", chapterTitleRu: "Начало" } });
+  for (let k = 0; k < out.length; k++) out[k].end = k + 1 < out.length ? out[k + 1].start : STEPS.length;
+  return out;
+}
+
+// Populate chapters select
+function updateChaptersSelect() {
+  const sel = $("chapterSelect");
+  let h = '<option value="">-- ' + I18N[lang].jumpTo + ' --</option>';
+  getSections().forEach(sc => { h += '<option value="' + sc.start + '">' + (sc.start + 1) + ". " + escHtml(secTitle(sc.st)) + "</option>"; });
+  sel.innerHTML = h;
+}
+
+function fillLessonSections() {
+  const sel = $("lsec"), secs = getSections();
+  sel.style.display = secs.length >= 2 ? "" : "none";
+  let h = '<option value="">' + I18N[lang].pickSection + "</option>";
+  secs.forEach((sc, k) => { h += '<option value="' + k + '">' + escHtml(secTitle(sc.st)) + " (" + (sc.start + 1) + "-" + sc.end + ")</option>"; });
+  sel.innerHTML = h;
+}
+
+function render() {
+  if (STEPS.length === 0) return;
+  const t = I18N[lang], s = STEPS[i], last = i === STEPS.length - 1;
+  document.documentElement.lang = lang;
+  $("title").innerHTML = t.title + "<small>" + t.sub + "</small>";
+  $("img").src = IMAGES[s.img] || "";
+  $("img").alt = t.step + " " + (i+1);
+
+  const [x,y,w,h] = s.box, hl = $("hl");
+  hl.style.cssText = `left:${x}%;top:${y}%;width:${w}%;height:${h}%`;
+  hl.classList.toggle("clickable", trainerMode);
+  hl.style.pointerEvents = trainerMode ? "" : "none";
+  hl.title = trainerMode ? "Click here to advance" : "";
+  
+  const c = $("cur");
+  if (s.cursorPos && Array.isArray(s.cursorPos)) {
+    c.style.left = s.cursorPos[0] + "%";
+    c.style.top = s.cursorPos[1] + "%";
+  } else {
+    c.style.left = (x + w * 0.96) + "%";
+    c.style.top = (y + h * 0.92) + "%";
+  }
+
+  $("num").textContent = i + 1;
+  $("chip").textContent = t[s.act] || s.act;
+
+  const bContainer = $("chapterBadgeContainer");
+  if (secTitle(s)) {
+    bContainer.textContent = "";
+    const badge = document.createElement("span");
+    badge.className = "chapter-badge";
+    badge.textContent = "📑 " + secTitle(s);
+    bContainer.appendChild(badge);
+  } else {
+    bContainer.innerHTML = "";
+  }
+
+  $("text").innerHTML = capHtml(s[lang] || s.ru || s.en || "");
+  if (s.code) {
+    $("codepre").textContent = s.code;
+    $("copybtn").textContent = t.copy;
+    $("codebox").classList.add("show");
+  } else {
+    $("codebox").classList.remove("show");
+  }
+  const note = META["note_" + lang] || META.note_en || META.note_ru || "";
+  $("wstip").innerHTML = note;
+  $("wstip").style.display = note ? "" : "none";
+  renderBlurs();
+  if (editOn) updateEditInfo();
+  $("prev").textContent = t.prev;
+  $("prev").disabled = i === 0;
+  $("next").textContent = last ? t.done : t.next;
+  $("hint").textContent = t.hint;
+
+  const secs = getSections();
+  let curSec = 0;
+  for (let k = 0; k < secs.length; k++) { if (i >= secs[k].start) curSec = k; }
+  const many = secs.length >= 2;
+  const ds = many ? secs[curSec].start : 0, de = many ? secs[curSec].end : STEPS.length;
+  let dh = "";
+  for (let k = ds; k < de; k++) {
+    dh += '<button aria-label="' + t.step + " " + (k + 1) + '"' + (k === i ? ' aria-current="true"' : "") + ' data-k="' + k + '"></button>';
+  }
+  $("dots").innerHTML = dh;
+  $("sections").classList.toggle("show", many);
+  $("sections").innerHTML = many ? secs.map((sc, k) =>
+    '<button type="button"' + (k === curSec ? ' aria-current="true"' : "") + ' data-sec="' + sc.start + '">' + escHtml(secTitle(sc.st)) + "</button>"
+  ).join("") : "";
+  $("chbtn").style.display = many ? "none" : "";
+  fillLessonSections();
+
+  $("fsb").textContent = "⛶ " + t.full;
+  $("fsx").textContent = "✕ " + t.exit + " (F)";
+  $("lsb").textContent = "✂ " + t.lesson;
+  $("lfrom").textContent = t.lfrom;
+  $("lto").textContent = t.lto;
+  $("lsave").textContent = t.lsave;
+  $("lnote").textContent = t.lnote;
+  $("lf").max = $("lt").max = STEPS.length;
+  $("chlbl").textContent = t.chapters;
+  $("modelbl").textContent = trainerMode ? t.trainerOn : t.trainerOff;
+
+  speechSync();
+  fit();
+  document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
+}
+
+function fit() {
+  const sh = $("shot"), im = $("img");
+  im.onload = fit;
+  if (!im.naturalWidth) return;
+  const ar = im.naturalWidth / im.naturalHeight, box = $("shotbox");
+  if (!document.body.classList.contains("fs")) {
+    // Keep screenshot + caption + nav inside the viewport: cap the screenshot height.
+    sh.style.width = sh.style.height = "";
+    const top = box.getBoundingClientRect().top + window.scrollY;
+    const below = $("panel").offsetHeight + document.querySelector("nav").offsetHeight + 36;
+    const maxH = Math.max(180, window.innerHeight - top - below);
+    const natH = box.clientWidth / ar;
+    if (natH > maxH) {
+      sh.style.width = (maxH * ar) + "px";
+      sh.style.height = maxH + "px";
+    }
+    return;
+  }
+  const w = Math.min(box.clientWidth, box.clientHeight * ar);
+  sh.style.width = w + "px";
+  sh.style.height = (w / ar) + "px";
+}
+
+function toggleFS() {
+  const on = document.body.classList.toggle("fs");
+  const nav = document.querySelector("nav");
+  if (on) document.querySelector(".panel").appendChild(nav);
+  else document.querySelector(".wrap").insertBefore(nav, $("hint"));
+  fit();
+}
+
+$("fsb").onclick = $("fsx").onclick = toggleFS;
+window.addEventListener("resize", fit);
+
+// Chapter menu toggle & jump
+$("chbtn").onclick = () => {
+  const m = $("chaptersMenu");
+  m.classList.toggle("open");
+  if (m.classList.contains("open")) updateChaptersSelect();
+};
+
+$("chapterSelect").onchange = (e) => {
+  const val = e.target.value;
+  if (val !== "") {
+    go(parseInt(val, 10));
+    $("chaptersMenu").classList.remove("open");
+  }
+};
+
+// Trainer mode toggle
+$("modebtn").onclick = () => {
+  trainerMode = !trainerMode;
+  render();
+};
+
+// Interactive click on highlight box
+$("hl").onclick = (e) => {
+  e.stopPropagation();
+  if (editOn) return;
+  const hl = $("hl");
+  hl.classList.add("clicked");
+  setTimeout(() => hl.classList.remove("clicked"), 300);
+  go(i === STEPS.length - 1 ? 0 : i + 1);
+};
+
+// Clicking screenshot outside target in trainer mode shakes/pulses the box
+$("shot").onclick = (e) => {
+  if (trainerMode && e.target.id !== "hl") {
+    const hl = $("hl");
+    hl.style.borderColor = "#f59e0b";
+    setTimeout(() => { hl.style.borderColor = ""; }, 400);
+  }
+};
+
+// Dark theme toggle
+$("thmbtn").onclick = () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try { localStorage.setItem("theme", next); } catch(e){}
+};
+try {
+  const savedTheme = localStorage.getItem("theme");
+  if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+} catch(e){}
+
+// Reset everything render() builds at runtime, so a saved copy starts clean
+function cleanClone(doc) {
+  doc.querySelector("body").className = "";
+  doc.querySelector("#img").removeAttribute("src");
+  doc.querySelector("#dots").innerHTML = "";
+  doc.querySelector("#sections").innerHTML = "";
+  doc.querySelector("#sections").className = "sections";
+  doc.querySelector("#lsec").innerHTML = "";
+  doc.querySelector("#codebox").className = "codebox";
+  doc.querySelector("#wstip").innerHTML = "";
+  doc.querySelector("#lesson").className = "lesson";
+  doc.querySelector("#chaptersMenu").className = "chapters-menu";
+  doc.querySelectorAll(".bl, .eh, .ebar").forEach(el => el.remove());
+}
+
+$("lsec").onchange = e => {
+  if (e.target.value === "") return;
+  const sc = getSections()[+e.target.value];
+  if (!sc) return;
+  $("lf").value = sc.start + 1;
+  $("lt").value = sc.end;
+};
+$("sections").onclick = e => {
+  const b = e.target.closest("button");
+  if (b && b.dataset.sec !== undefined) go(+b.dataset.sec);
+};
+$("text").onclick = e => {
+  const c = e.target.closest && e.target.closest("code.cp");
+  if (!c) return;
+  const txt = c.textContent;
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).catch(() => legacyCopy(txt));
+  else legacyCopy(txt);
+  c.classList.add("copied");
+  setTimeout(() => c.classList.remove("copied"), 900);
+};
+$("copybtn").onclick = () => {
+  const txt = $("codepre").textContent;
+  const done = () => {
+    $("copybtn").textContent = I18N[lang].copied;
+    setTimeout(() => { $("copybtn").textContent = I18N[lang].copy; }, 1200);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(txt).then(done, () => { legacyCopy(txt); done(); });
+  } else {
+    legacyCopy(txt);
+    done();
+  }
+};
+function legacyCopy(txt) {
+  const ta = document.createElement("textarea");
+  ta.value = txt;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); } catch (e) {}
+  ta.remove();
+}
+
+// Lesson slicing
+$("lsb").onclick = () => {
+  const l = $("lesson");
+  l.classList.toggle("open");
+  if (l.classList.contains("open")) {
+    $("lf").value = i + 1;
+    $("lt").value = STEPS.length;
+  }
+};
+
+$("lsave").onclick = () => {
+  const a = Math.max(1, Math.min(STEPS.length, +$("lf").value || 1));
+  const b = Math.max(a, Math.min(STEPS.length, +$("lt").value || STEPS.length));
+  const slicedSteps = STEPS.slice(a - 1, b).map(s => Object.assign({}, s));
+  if (!slicedSteps[0].chapterTitle && !slicedSteps[0].chapterTitleRu) {
+    for (let k = a - 2; k >= 0; k--) {
+      if (STEPS[k].chapterTitle || STEPS[k].chapterTitleRu) {
+        slicedSteps[0].chapterTitle = STEPS[k].chapterTitle;
+        slicedSteps[0].chapterTitleRu = STEPS[k].chapterTitleRu;
+        break;
+      }
+    }
+  }
+  const slicedImgs = {};
+  slicedSteps.forEach(s => { slicedImgs[s.img] = IMAGES[s.img]; });
+
+  const src = document.getElementById("app").textContent;
+  const NL = String.fromCharCode(10);
+  const k = src.indexOf(NL + "const I18N");
+  const safe = o => JSON.stringify(o).replace(/</g, "\\u003c");
+  const code = "const STEPS = " + safe(slicedSteps) + ";" + NL +
+               "const IMAGES = " + safe(slicedImgs) + ";" + NL +
+               "const META = " + safe(META) + ";" + src.slice(k);
+
+  const doc = document.documentElement.cloneNode(true);
+  cleanClone(doc);
+  doc.querySelector("#app").textContent = code;
+  const gsrc = doc.querySelector("#guide-source");
+  if (gsrc) gsrc.remove();
+  doc.querySelector("title").textContent = document.title + " (steps " + a + "-" + b + ")";
+
+  const html = "<!doctype html>" + NL + doc.outerHTML;
+  const blobUrl = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = "lesson-steps-" + a + "-" + b + ".html";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+};
+
+// ---- Frame editor: Ctrl+Shift+E (or open the file with ?edit=1). Move the red frame and blur areas, then save the file. ----
+const origBoxes = STEPS.map(s => s.box.slice());
+const origBlurs = STEPS.map(s => (s.blur || []).map(b => b.slice()));
+const modified = new Set();
+let editBar = null, editInfo = null;
+
+function renderBlurs() {
+  const sh = $("shot");
+  sh.querySelectorAll(".bl").forEach(el => el.remove());
+  const blurs = STEPS[i].blur || [];
+  blurs.forEach((b, bi) => {
+    const div = document.createElement("div");
+    div.className = "bl";
+    div.dataset.bi = bi;
+    div.style.cssText = "left:" + b[0] + "%;top:" + b[1] + "%;width:" + b[2] + "%;height:" + b[3] + "%";
+    if (editOn) {
+      addHandles(div);
+      const del = document.createElement("button");
+      del.className = "bdel"; del.textContent = "x"; del.title = "Remove blur";
+      del.onclick = ev => {
+        ev.stopPropagation();
+        STEPS[i].blur.splice(bi, 1);
+        if (!STEPS[i].blur.length) delete STEPS[i].blur;
+        modified.add(i); renderBlurs(); updateEditInfo();
+      };
+      div.appendChild(del);
+    }
+    sh.insertBefore(div, $("hl"));
+  });
+}
+function addHandles(el) {
+  if (el.querySelector(".eh")) return;
+  ["nw","n","ne","e","se","s","sw","w"].forEach(d => {
+    const h = document.createElement("div");
+    h.className = "eh"; h.dataset.d = d;
+    el.appendChild(h);
+  });
+}
+function updateEditInfo() {
+  if (!editInfo) return;
+  const b = STEPS[i].box;
+  editInfo.innerHTML = "<b>Step " + (i + 1) + "</b> | box %: <code>[" + b.join(", ") + "]</code> | blur: <b>" + (STEPS[i].blur || []).length + "</b> | changed steps: <b>" + modified.size + "</b>";
+}
+function downloadFile(name, content, type) {
+  const url = URL.createObjectURL(new Blob([content], { type: type }));
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+function saveEditedHtml() {
+  const clone = document.documentElement.cloneNode(true);
+  cleanClone(clone);
+  const appEl = clone.querySelector("#app");
+  const src = appEl.textContent;
+  const a0 = src.indexOf("[", src.indexOf("const STEPS = "));
+  const m = src.slice(a0).match(/;\r?\nconst IMAGES/);
+  const a1 = m ? a0 + m.index : src.indexOf(";", a0);
+  appEl.textContent = src.slice(0, a0) + safeJson(STEPS) + src.slice(a1);
+  // keep the editable project inside the file in step with the new frames
+  const gs = clone.querySelector("#guide-source");
+  if (gs) {
+    try {
+      const o = JSON.parse(gs.textContent);
+      if (o.steps && o.steps.length === STEPS.length) {
+        o.steps.forEach((ss, k) => {
+          const b = STEPS[k].box;
+          ss.box = { x: b[0], y: b[1], w: b[2], h: b[3] };
+          if (STEPS[k].blur && STEPS[k].blur.length) ss.blur = STEPS[k].blur.map(r => ({ x: r[0], y: r[1], w: r[2], h: r[3] }));
+          else delete ss.blur;
+        });
+        gs.textContent = safeJson(o);
+      } else { gs.remove(); }
+    } catch (e) { gs.remove(); }
+  }
+  let name = "guide.html";
+  try { name = decodeURIComponent(location.pathname.split("/").pop()) || "guide.html"; } catch (e) {}
+  if (!/[.]html?$/i.test(name)) name = "guide.html";
+  downloadFile(name, "<!doctype html>" + String.fromCharCode(10) + clone.outerHTML, "text/html;charset=utf-8");
+}
+function setEdit(on) {
+  editOn = on;
+  document.body.classList.toggle("edit-mode", on);
+  if (on) {
+    addHandles($("hl"));
+    if (!editBar) {
+      editBar = document.createElement("div");
+      editBar.className = "ebar";
+      editInfo = document.createElement("span");
+      editInfo.style.flex = "1";
+      const mk = (label, fn, primary) => {
+        const b = document.createElement("button");
+        b.textContent = label;
+        if (primary) b.className = "primary";
+        b.onclick = fn;
+        return b;
+      };
+      editBar.append(
+        editInfo,
+        mk("+ Add blur", () => {
+          if (!STEPS[i].blur) STEPS[i].blur = [];
+          STEPS[i].blur.push([10, 6, 16, 4]);
+          modified.add(i); renderBlurs(); updateEditInfo();
+        }),
+        mk("Reset step", () => {
+          STEPS[i].box = origBoxes[i].slice();
+          if (origBlurs[i].length) STEPS[i].blur = origBlurs[i].map(b => b.slice()); else delete STEPS[i].blur;
+          modified.delete(i); render();
+        }),
+        mk("Save HTML", saveEditedHtml, true),
+        mk("Exit edit", () => setEdit(false))
+      );
+      const stage = document.querySelector(".stage");
+      stage.parentNode.insertBefore(editBar, stage);
+    }
+    editBar.style.display = "flex";
+  } else {
+    $("hl").querySelectorAll(".eh").forEach(el => el.remove());
+    if (editBar) editBar.style.display = "none";
+  }
+  renderBlurs();
+  updateEditInfo();
+}
+let editDrag = null;
+$("shot").addEventListener("pointerdown", e => {
+  if (!editOn) return;
+  if (e.target.classList.contains("bdel")) return;
+  const hlEl = e.target.closest("#hl"), blEl = e.target.closest(".bl");
+  if (!hlEl && !blEl) return;
+  e.preventDefault(); e.stopPropagation();
+  const dir = e.target.classList.contains("eh") ? e.target.dataset.d : "move";
+  const rect = $("shot").getBoundingClientRect();
+  const bi = blEl ? Number(blEl.dataset.bi) : -1;
+  const arr = bi >= 0 ? STEPS[i].blur[bi] : STEPS[i].box;
+  editDrag = { bi: bi, dir: dir, sx: e.clientX, sy: e.clientY, rw: rect.width, rh: rect.height, orig: arr.slice() };
+});
+window.addEventListener("pointermove", e => {
+  if (!editDrag) return;
+  const dx = ((e.clientX - editDrag.sx) / editDrag.rw) * 100;
+  const dy = ((e.clientY - editDrag.sy) / editDrag.rh) * 100;
+  let x = editDrag.orig[0], y = editDrag.orig[1], w = editDrag.orig[2], h = editDrag.orig[3];
+  const d = editDrag.dir, rd = v => Math.round(v * 100) / 100;
+  if (d === "move") {
+    x = Math.max(0, Math.min(100 - w, x + dx));
+    y = Math.max(0, Math.min(100 - h, y + dy));
+  } else {
+    if (d.indexOf("w") >= 0) { const nx = Math.max(0, Math.min(x + w - 0.5, x + dx)); w += x - nx; x = nx; }
+    if (d.indexOf("e") >= 0) { w = Math.max(0.5, Math.min(100 - x, w + dx)); }
+    if (d.indexOf("n") >= 0) { const ny = Math.max(0, Math.min(y + h - 0.5, y + dy)); h += y - ny; y = ny; }
+    if (d.indexOf("s") >= 0) { h = Math.max(0.5, Math.min(100 - y, h + dy)); }
+  }
+  const next = [rd(x), rd(y), rd(w), rd(h)];
+  if (editDrag.bi >= 0) {
+    STEPS[i].blur[editDrag.bi] = next;
+    const el = $("shot").querySelector('.bl[data-bi="' + editDrag.bi + '"]');
+    if (el) el.style.cssText = "left:" + next[0] + "%;top:" + next[1] + "%;width:" + next[2] + "%;height:" + next[3] + "%";
+  } else {
+    STEPS[i].box = next;
+    $("hl").style.cssText = "left:" + next[0] + "%;top:" + next[1] + "%;width:" + next[2] + "%;height:" + next[3] + "%";
+    if (!STEPS[i].cursorPos) {
+      $("cur").style.left = (next[0] + next[2] * 0.96) + "%";
+      $("cur").style.top = (next[1] + next[3] * 0.92) + "%";
+    }
+  }
+  modified.add(i);
+  updateEditInfo();
+});
+window.addEventListener("pointerup", () => { editDrag = null; });
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey && e.shiftKey && (e.key === "E" || e.key === "e")) {
+    e.preventDefault();
+    setEdit(!editOn);
+  }
+});
+
+// Read the step aloud (browser speech synthesis, no libraries, no keys).
+const SPEECH_OK = "speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined";
+let voices = [], speaking = false, spokenKey = "", touched = false, autoRead = false;
+try { autoRead = localStorage.getItem("autoread") === "1"; } catch(e){}
+function pickVoice(l) {
+  const list = voices.filter(v => (v.lang || "").split("_").join("-").toLowerCase().indexOf(l) === 0);
+  if (!list.length) return null;
+  return list.find(v => /natural|neural|online/i.test(v.name)) || list.find(v => v.localService) || list[0];
+}
+function plainText(html) {
+  const d = document.createElement("div");
+  d.innerHTML = html;
+  return (d.textContent || "").split(" ").filter(Boolean).join(" ").trim();
+}
+function setSayUi() {
+  const t = I18N[lang];
+  $("say").classList.toggle("speaking", speaking);
+  $("saylbl").textContent = speaking ? t.stopSay : t.say;
+}
+function stopSpeech() {
+  if (!SPEECH_OK) return;
+  speechSynthesis.cancel();
+  speaking = false;
+  setSayUi();
+}
+function speak() {
+  const v = SPEECH_OK && pickVoice(lang);
+  if (!v) return;
+  stopSpeech();
+  const u = new SpeechSynthesisUtterance(plainText(STEPS[i][lang] || STEPS[i].en || STEPS[i].ru || ""));
+  u.voice = v;
+  u.lang = v.lang;
+  u.onend = u.onerror = () => { if (speaking) { speaking = false; setSayUi(); } };
+  speaking = true;
+  setSayUi();
+  setTimeout(() => speechSynthesis.speak(u), 60);
+}
+function speechSync() {
+  if (!SPEECH_OK) return;
+  const ready = !!pickVoice(lang);
+  $("speech").classList.toggle("ready", ready);
+  $("autolbl").textContent = I18N[lang].auto;
+  $("autoread").checked = autoRead;
+  setSayUi();
+  const key = i + ":" + lang;
+  if (key !== spokenKey) {
+    spokenKey = key;
+    stopSpeech();
+    if (ready && autoRead && touched) speak();
+  }
+}
+if (SPEECH_OK) {
+  voices = speechSynthesis.getVoices();
+  speechSynthesis.addEventListener("voiceschanged", () => { voices = speechSynthesis.getVoices(); speechSync(); });
+  $("say").onclick = () => { touched = true; if (speaking) stopSpeech(); else speak(); };
+  $("autoread").onchange = e => {
+    autoRead = e.target.checked;
+    try { localStorage.setItem("autoread", autoRead ? "1" : "0"); } catch(e){}
+    if (autoRead) { touched = true; speak(); }
+  };
+  document.addEventListener("pointerdown", () => { touched = true; }, true);
+  document.addEventListener("keydown", () => { touched = true; }, true);
+  window.addEventListener("pagehide", () => speechSynthesis.cancel());
+}
+
+function go(n) {
+  i = Math.max(0, Math.min(STEPS.length - 1, n));
+  render();
+}
+
+$("prev").onclick = () => go(i - 1);
+$("next").onclick = () => go(i === STEPS.length - 1 ? 0 : i + 1);
+
+$("dots").onclick = e => {
+  const k = e.target.dataset.k;
+  if (k !== undefined) go(+k);
+};
+
+document.querySelector(".seg").onclick = e => {
+  const l = e.target.dataset.lang;
+  if (!l) return;
+  lang = l;
+  try { localStorage.setItem(LANG_KEY, l); } catch(e){}
+  render();
+};
+
+document.addEventListener("keydown", e => {
+  const tg = e.target, tn = tg && tg.tagName;
+  if (tn === "INPUT" || tn === "SELECT" || tn === "TEXTAREA" || (tg && tg.isContentEditable)) return;
+  if (e.key === "ArrowRight") go(i + 1);
+  if (e.key === "ArrowLeft") go(i - 1);
+  if ((e.key === "f" || e.key === "F" || e.key === "а" || e.key === "А") && !e.ctrlKey && !e.metaKey && !e.altKey) toggleFS();
+  if (e.key === "Escape" && document.body.classList.contains("fs")) toggleFS();
+});
+
+render();
+try { if (new URLSearchParams(location.search).get("edit") === "1") setEdit(true); } catch (e) {}
+</script>
+</body>
+</html>
